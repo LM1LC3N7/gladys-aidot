@@ -21,7 +21,9 @@ once.
   directly on your network (TCP port 10000, AES with the key of the light): no
   command goes through the cloud. The address comes from the cloud; when it is
   missing or wrong, a discovery request is broadcast by Gladys itself
-  (UDP 6666, as the AiDot app does) to find it.
+  (UDP 6666, as the AiDot app does) to find it. As in the AiDot app, that request
+  carries the id of your AiDot account to every device of your local network
+  (under the public key of the protocol).
 - The password, the tokens of the session, your user id and the keys of the
   lights are never written to a log, the status or the `/data` folder of the
   integration; the tokens and the keys stay in memory.
@@ -89,18 +91,25 @@ refused before anything is sent.
 
 An Off (power 0, or brightness 0) needs no option and goes first: it cancels
 the commands of that light still waiting (none of them leaves after it), cuts
-a request that has had no answer for 1 s, and goes whatever the cloud says (a
-refusal, a pause, not reached) and even when the configuration cannot be read,
-as long as the light is known.
+a request that has had no answer for 1 s, and, **once the light is known**
+(its key in memory), goes whatever the cloud says (a refusal, a pause, not
+reached) and even when the configuration cannot be read.
 
 When it cannot leave, it is **kept** (also across a restart) and sent again
 every 10 s, at once when a connection to the light opens, and as soon as the
-cloud gives the light (after a restart, its key comes from the cloud first).
-Sent, it is checked by a read right after: off, it is done; still on after the
-light answered it, it is sent again 10 s later. It ends once the light shows it
-off, when the light is turned on again in the app or at the switch after the
-Off was answered (never undone), when a newer command of that light leaves, or
-when the device is deleted in Gladys.
+cloud gives the light. Sent, it is checked by a read right after: off, it is
+done; still on (a read or a report of the light) after the light answered it,
+it is sent again 10 s later. It ends once the light shows it off, when a newer
+command of that light leaves, or when the device is deleted in Gladys.
+
+**After a restart, nothing can be driven before the first read of the cloud**,
+an Off included: the keys of the lights are never written to `/data`, so they
+come from the cloud first. That read comes a minute after the last attempt at
+most in normal times. For an Off held, a pause asked by AiDot is waited 10
+minutes at most and a cloud not reached is tried every minute. The Off cannot
+leave while the credentials are refused (until you correct them or click
+**Test the connection**), while the cloud does not answer, or while the
+configuration cannot be read from Gladys: the status says which.
 
 An Off is refused only when replaced by a newer click on the same light before
 it left. Once the light has answered it 4 times without showing it off, it is
@@ -118,6 +127,6 @@ the lights to add, and every Off held.
   Gladys; new tries after 5 or 15 s, then 30 s, 1, 2, then every 5 minutes, and
   a discovery every 5 minutes at most.
 - "another light or another key": the key changed (light reset or paired
-  again): the list is read again from the cloud (a minute apart at most).
+  again): the list is read again from the cloud (a minute apart at least, then twice that each time the key did not change).
 - Nothing in Discover: only the lights with a local key are listed (Wi-Fi
   lights of the AiDot app, in a home you own).

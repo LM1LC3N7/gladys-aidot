@@ -23,7 +23,9 @@ couleur et température de couleur, et les changements envoyés par les lumière
   lumière) : aucune commande ne passe par le cloud. L’adresse vient du cloud ;
   quand elle manque ou n’est plus bonne, une demande de découverte est
   diffusée par Gladys lui-même (UDP 6666, comme le fait l’application AiDot)
-  pour la retrouver.
+  pour la retrouver. Comme dans l’application AiDot, cette demande porte
+  l’identifiant de votre compte AiDot vers tous les appareils de votre réseau
+  local (sous la clé publique du protocole).
 - Le mot de passe, les jetons de la session, votre identifiant d’utilisateur et
   les clés des lumières ne sont jamais écrits dans un journal, le statut ou le
   dossier `/data` de l’intégration ; les jetons et les clés restent en mémoire.
@@ -95,19 +97,27 @@ blanche, est refusée avant tout envoi.
 
 Un arrêt (allumage 0, ou intensité 0) ne demande aucune option et passe en
 premier : il annule les commandes de cette lumière encore en attente (aucune ne
-part après lui), coupe une requête restée sans réponse 1 s, et part quoi que
-dise le cloud (un refus, une pause, injoignable) et même si la configuration ne
-peut pas être lue, tant que la lumière est connue.
+part après lui), coupe une requête restée sans réponse 1 s, et, **une fois la
+lumière connue** (sa clé en mémoire), part quoi que dise le cloud (un refus,
+une pause, injoignable) et même si la configuration ne peut pas être lue.
 
 Quand il ne peut pas partir, il est **gardé** (aussi au redémarrage) et renvoyé
 toutes les 10 s, aussitôt qu’une connexion à la lumière s’ouvre, et dès que le
-cloud donne la lumière (après un redémarrage, sa clé vient d’abord du cloud).
-Envoyé, il est vérifié par une lecture juste après : éteinte, c’est fait ;
-encore allumée alors que la lumière l’a répondu, il est renvoyé 10 s plus tard.
-Il prend fin quand la lumière se montre éteinte, quand elle est rallumée dans
-l’application ou à l’interrupteur après la réponse à l’arrêt (jamais défait),
-quand une commande plus récente de cette lumière part, ou quand l’appareil est
-supprimé dans Gladys.
+cloud donne la lumière. Envoyé, il est vérifié par une lecture juste après :
+éteinte, c’est fait ; encore allumée (une lecture ou un compte rendu de la
+lumière) alors que la lumière l’a répondu, il est renvoyé 10 s plus tard. Il
+prend fin quand la lumière se montre éteinte, quand une commande plus récente de
+cette lumière part, ou quand l’appareil est supprimé dans Gladys.
+
+**Après un redémarrage, rien n’est pilotable avant la première lecture du
+cloud**, arrêt compris : les clés des lumières ne sont jamais écrites dans
+`/data`, elles viennent d’abord du cloud. Cette lecture a lieu une minute au
+plus après le dernier essai en temps normal. Pour un arrêt gardé, une demande
+d’attente d’AiDot est attendue 10 minutes au plus et un cloud injoignable est
+réessayé toutes les minutes. L’arrêt ne peut pas partir tant que les
+identifiants sont refusés (jusqu’à ce que vous les corrigiez ou cliquiez sur
+**Tester la connexion**), tant que le cloud ne répond pas, ou tant que la
+configuration ne peut pas être lue depuis Gladys : le statut dit lequel.
 
 Un arrêt n’est refusé que s’il est remplacé par un clic plus récent sur la même
 lumière avant de partir. Une fois répondu 4 fois par la lumière sans qu’elle se
@@ -126,8 +136,7 @@ réseau, les lumières à ajouter, et chaque arrêt gardé.
   Gladys ; nouveaux essais après 5 ou 15 s, puis 30 s, 1, 2, puis toutes les
   5 minutes, et une découverte toutes les 5 minutes au plus.
 - « une autre lumière ou une autre clé » : la clé a changé (lumière remise à
-  zéro ou réappairée) : la liste est relue depuis le cloud (une minute d’écart
-  au moins).
+  zéro ou réappairée) : la liste est relue depuis le cloud (une minute d’écart au moins, puis le double chaque fois que la clé n’a pas changé).
 - Rien dans Découverte : seules les lumières qui ont une clé locale y figurent
   (lumières Wi-Fi de l’application AiDot, dans une maison dont vous êtes
   propriétaire).

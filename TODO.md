@@ -4,6 +4,14 @@ Handoff document: what is done, what was decided, what comes next.
 
 ## Status
 
+- [x] **Review r1** (2026-11-06): REFUSÉ (4 importants, 6 mineurs); fixed: an
+      Off held after a restart no longer waits for a whole 429 pause nor the
+      growing retries, and every text says exactly when it cannot leave (I1); a
+      report equal to the state of before never ends an Off (I2); answers
+      without `seq` that cannot be dated dropped, an unmatched one never applied (I3); the
+      reviewer's surviving mutants killed and listed (I4); minors M1-M6. Tests
+      in `test/review1.test.js`.
+
 - [x] **Milestone 1** (2026-11-06): the AiDot cloud (sign-in, houses, devices,
       products) for the list, addresses and keys of the lights; each light added
       driven on the local network (TCP 10000, AES): power, brightness, colour,
@@ -27,12 +35,16 @@ Handoff document: what is done, what was decided, what comes next.
   this integration only on 2026-11-05** ("Ok pour ce lot, avec aidot car c'est
   la lib officielle"). Said in the docs (fr/en), README and
   THIRD_PARTY_NOTICES.md. No other imitation: no User-Agent; our own `seq`
-  prefix (`gl01`) and `clientId` prefix (`gladys-`) instead of the "ha" ones of
-  the library (untested on a real light: if a light refuses them, that is the
-  first thing to check).
-- The cloud gives the keys: they stay in memory (never in `/data`), so after a
-  restart an Off held waits for the first read of the cloud (a minute after the
-  last attempt at most) before it can leave. Said in the docs.
+  prefix (`gl01`) and `clientId` prefix (`gl-`, the length of the library's
+  `ha-`, review r1) instead of the "ha" ones of the library (untested on a real
+  light: if a light refuses them, that is the first thing to check).
+- The cloud gives the keys: they stay in memory (never in `/data`, not even
+  sealed: no secret in `/data`), so after a restart nothing, an Off included,
+  can be driven before the first read of the cloud: a minute after the last
+  attempt at most in normal times; for an Off held a pause is waited 10 min at
+  most and a failed read retried every minute (review r1, I1); never while the
+  credentials are refused, the cloud does not answer or the configuration
+  cannot be read. Said exactly in the docs, README and the status.
 - Only the sign-in route refuses the credentials (code 560080). A 401 or a
   session code (21025/21027/21041) of a read renews the session (one sign-in)
   and is never a refusal; 21026 refreshes the token. A refusal is kept in
@@ -61,8 +73,17 @@ Handoff document: what is done, what was decided, what comes next.
   (always, not only when the light is believed off as in python-aidot).
 - Offs: as gladys-deako 0.1.1 (approved at r4): no deadline to leave, cut of a
   request silent 1 s, kept and sent every 10 s while unanswered (never given
-  up), judged by a read right after each send, 4 answered tries at most; a
-  push "on" after the answer ends the guard (turned on elsewhere).
+  up), judged by a read right after each send, 4 answered tries at most, a
+  contradicted one sent again 9 to 10 s after its last send. A report "on" of
+  the light is a contradiction, never "turned on elsewhere" (review r1, I2:
+  equal to the state of before, it says nothing of a change).
+- Answers without `seq` (review r1, I3): while a request of the same method
+  that timed out less than 6 s ago is still owed an answer, an answer cannot be
+  dated: it is dropped (counted against the oldest), never applied nor given to
+  the request in flight; an answer matched to nothing is never applied.
+- A light that does not open with its key asks the cloud again a minute later,
+  then twice that each time (up to 6 h) while the read does not change it
+  (review r1, M3). Loopback addresses refused (M6).
 - Features: light/binary, light/brightness (0 = Off), light/color, light/
   temperature in kelvin (range of the product, 2700-6500 K by default); no unit
   (none listed by the core for the light category).

@@ -63,7 +63,7 @@ async function lightServer(light) {
 
 test('real clock x20: reads at the interval, a command and an Off confirmed on a real socket', async (t) => {
   const clock = realClock({ speed: SPEED });
-  const world = fakeAidot({ clock, lights: [{ ...LIGHTS()[0], ip: '127.0.0.1' }] });
+  const world = fakeAidot({ clock, lights: [{ ...LIGHTS()[0], ip: '192.168.1.50' }] });
   world.cloud.latency = 20;
   const light = world.lights.get(LAMP);
   const srv = await lightServer(light);
@@ -77,7 +77,8 @@ test('real clock x20: reads at the interval, a command and an Off confirmed on a
   const app = new App({
     gladys,
     logger: { info: quiet, warn: quiet, error: quiet, debug: quiet },
-    connect: ({ host }) => tcpConnect({ host, port: srv.port }),
+    // The light's LAN address, served by the local server.
+    connect: () => tcpConnect({ host: '127.0.0.1', port: srv.port }),
     transport: world.transport,
     now: clock.now,
     monotonic: clock.monotonic,

@@ -129,6 +129,30 @@ const CONFIG_ERRORS = {
   ),
 };
 
+const GUARD_WHY = {
+  refused: both(
+    'not before: the credentials are refused; correct them or click "Test the connection"',
+    'pas avant : les identifiants sont refusés ; corrigez-les ou cliquez sur « Tester la connexion »',
+  ),
+  config: both(
+    'not before: no usable credentials in the configuration',
+    'pas avant : aucun identifiant utilisable dans la configuration',
+  ),
+  failed: both(
+    'the cloud does not answer: tried every minute',
+    'le cloud ne répond pas : essayé toutes les minutes',
+  ),
+  paused: both(
+    'the cloud asked to wait: tried every 10 min at most',
+    'le cloud a demandé d’attendre : essayé toutes les 10 min au plus',
+  ),
+  pending: both('read in progress or due', 'lecture en cours ou prévue'),
+  unlisted: both(
+    'the light is not in the list of the account',
+    'la lumière n’est pas dans la liste du compte',
+  ),
+};
+
 export const T = {
   configError: (code) => CONFIG_ERRORS[code] ?? CONFIG_ERRORS.no_credentials,
   countryError: both(
@@ -186,10 +210,10 @@ export const T = {
       `${name}: no address known (the cloud gives none, the discovery did not find it).`,
       `${name} : aucune adresse connue (le cloud n’en donne pas, la découverte ne l’a pas trouvée).`,
     ),
-  guardUnknown: (name) =>
+  guardUnknown: (name, why) =>
     both(
-      `Off of ${name}: kept, sent as soon as the light is known (the AiDot cloud read).`,
-      `Arrêt de ${name} : gardé, envoyé dès que la lumière est connue (cloud AiDot lu).`,
+      `Off of ${name}: kept, sent as soon as the AiDot cloud gives the key of the light (${GUARD_WHY[why].en}).`,
+      `Arrêt de ${name} : gardé, envoyé dès que le cloud AiDot donne la clé de la lumière (${GUARD_WHY[why].fr}).`,
     ),
   guardPending: (name) =>
     both(
@@ -316,10 +340,6 @@ export const ERRORS = {
       `Off sent, refused by the light (${reason.en}): held, sent again in 10 s.`,
       `Arrêt envoyé, refusé par la lumière (${reason.fr}) : gardé, renvoyé dans 10 s.`,
     ),
-  offOverridden: both(
-    'Off sent and answered, then the light was turned on again (switch or app): no longer held.',
-    'Arrêt envoyé et répondu, puis la lumière a été rallumée (interrupteur ou application) : plus gardé.',
-  ),
   offUnconfirmed: both(
     'Off sent, without confirmation yet: held, sent again in 10 s if it got no answer or a read still shows the light on.',
     'Arrêt envoyé, sans confirmation pour l’instant : gardé, renvoyé dans 10 s s’il n’a pas eu de réponse ou si une lecture montre encore la lumière allumée.',

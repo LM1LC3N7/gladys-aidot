@@ -5,6 +5,7 @@
 // of their own (src/cloud.js).
 // -----------------------------------------------------------------------------
 
+import http from 'node:http';
 import https from 'node:https';
 import { LIMITS, TIMINGS } from './constants.js';
 
@@ -59,7 +60,10 @@ export function httpsRequest(
       fn(value);
     };
     try {
-      req = https.request(new URL(url), { method, headers }, (res) => {
+      const target = new URL(url);
+      // The cloud is https only (src/constants.js); plain http serves the tests of the bounds.
+      const lib = target.protocol === 'http:' ? http : https;
+      req = lib.request(target, { method, headers }, (res) => {
         const declared = Number(res.headers['content-length']);
         if (Number.isFinite(declared) && declared > maxBytes) {
           settle(reject, new TransportError('size', 'answer too large'));

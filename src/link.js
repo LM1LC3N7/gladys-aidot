@@ -44,6 +44,8 @@ import {
 
 /** A closed connection is waited for this long at most before the next one. */
 const CLOSE_WAIT = 200;
+/** A request that timed out may still get its answer this long after (then it is taken as lost). */
+const LATE_ANSWER = 6_000;
 
 export class LinkError extends Error {
   /**
@@ -276,6 +278,8 @@ export class LightLink {
           lastSendAt: this.monotonic(),
           asc: 1,
           loggedIn: false,
+          /** Requests that timed out ({ method, at }), oldest first. */
+          expired: [],
         };
         const loginSeq = String(Math.floor(this.now()) + this.loginSeq++).slice(-9);
         // The login: the first frame back must open with the key of this light and say 200.
@@ -438,12 +442,30 @@ export class LightLink {
   }
 
   handle(conn, message) {
+    if (message.seq === undefined && /Resp$/.test(message.method ?? '')) {
+      // Without `seq`, while a request of that method is still owed an answer (timed out less
+      // than 6 s ago): the answer cannot be dated (the old one, or the one in flight?). It is
+      // counted against the oldest and dropped, never applied nor given to the one in flight.
+      const now = this.monotonic();
+      conn.expired = conn.expired.filter((e) => now - e.at < LATE_ANSWER);
+      const at = conn.expired.findIndex((e) => e.method.replace(/Req$/, 'Resp') === message.method);
+      if (at !== -1) {
+        conn.expired.splice(at, 1);
+        // The request in flight of that method may have been the one answered: no answer
+        // without `seq` is given to it any more (it ends by its timeout).
+        if (this.inFlight && this.inFlight.method.replace(/Req$/, 'Resp') === message.method)
+          this.inFlight.undatable = true;
+        return;
+      }
+    }
     const job = this.inFlight;
     const answers =
       job &&
       job.conn === conn &&
       ((message.seq !== undefined && message.seq === job.seq) ||
-        (message.seq === undefined && message.method === job.method.replace(/Req$/, 'Resp')));
+        (message.seq === undefined &&
+          !job.undatable &&
+          message.method === job.method.replace(/Req$/, 'Resp')));
     if (answers) {
       if (message.code !== undefined && message.code !== 200) {
         this.finish(
@@ -675,6 +697,9 @@ export class LightLink {
       }
       const wait = Math.max(0, Math.min(job.timeout, job.deadline - at));
       job.timer = this.timers.setTimeout(() => {
+        // Its answer may still come: a light that echoes no `seq` is matched in order.
+        conn.expired.push({ method: job.method, at: this.monotonic() });
+        if (conn.expired.length > 16) conn.expired.shift();
         this.finish(job, null, new LinkError('timeout', { sent: true }));
       }, wait);
       this.armCut();

@@ -89,7 +89,7 @@ test('the messages: long form with simpleVersion, short form without; RGBW packe
     tst: 1,
   };
   const long = actionRequest({ ...base, method: 'setDevAttrReq', simpleVersion: '1' });
-  assert.equal(long.clientId, 'gladys-u1');
+  assert.equal(long.clientId, 'gl-u1');
   assert.equal(long.srcAddr, '0.u1');
   assert.deepEqual(long.payload, {
     devId: 'd1',
@@ -171,12 +171,12 @@ test('ids, names and addresses of the cloud list are checked', () => {
     '172.20.1.1',
     '169.254.3.4',
     '100.64.0.9',
-    '127.0.0.1',
     'fd00::5',
   ])
     assert.ok(lanAddress(ok), ok);
   for (const bad of [
     '8.8.8.8',
+    '127.0.0.1',
     '0.0.0.0',
     '255.255.255.255',
     '224.0.0.1',

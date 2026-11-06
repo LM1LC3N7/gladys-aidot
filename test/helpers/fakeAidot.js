@@ -117,6 +117,11 @@ export function fakeAidot({ clock, lights = LIGHTS() } = {}) {
     latency: 15,
     /** Latency of the answers to reads only (undefined: `latency`). */
     getLatency: undefined,
+    /** Latency of the answers to sets only; the answer to a set carries the state of before. */
+    setLatency: undefined,
+    answerAttr: false,
+    /** A set applied and reported before its answer. */
+    pushFirst: false,
     /** The light answers its login with another deviceId. */
     otherId: new Set(),
     pushDelay: 20,
@@ -372,6 +377,12 @@ function handle(world, socket, light, type, message) {
   }
   if (message.method === 'setDevAttrReq') {
     if (world.muteSet.has(light.id)) return;
+    const before = { ...light.state };
+    if (world.pushFirst) {
+      // Applied and reported at once, answered later.
+      Object.assign(light.state, message.payload.attr);
+      for (const s of world.sockets) if (s.light === light && s.logged) s.feed(notifyOf(light));
+    }
     send(() => {
       socket.feed({
         service: 'device',
@@ -379,8 +390,10 @@ function handle(world, socket, light, type, message) {
         seq,
         deviceId: light.id,
         ack: { code: 200 },
+        // Some firmwares answer with the attributes as they were when the set came.
+        ...(world.answerAttr ? { payload: { devId: light.id, attr: before } } : {}),
       });
-      if (world.ignoreSet.has(light.id)) return;
+      if (world.ignoreSet.has(light.id) || world.pushFirst) return;
       world.later(() => {
         const attr = message.payload.attr;
         if (attr.RGBW !== undefined) attr.RGBW = attr.RGBW | 0;
@@ -388,6 +401,6 @@ function handle(world, socket, light, type, message) {
         if (world.noPush.has(light.id)) return;
         for (const s of world.sockets) if (s.light === light && s.logged) s.feed(notifyOf(light));
       }, world.pushDelay);
-    });
+    }, world.setLatency ?? world.latency);
   }
 }

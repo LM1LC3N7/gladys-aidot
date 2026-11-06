@@ -26,8 +26,9 @@ export function nameOf(value) {
 
 /**
  * An address of the local network the light may be reached at: private IPv4 (10/8,
- * 172.16/12, 192.168/16), link-local 169.254/16, shared 100.64/10, loopback; or a unique
- * local IPv6 (fc00::/7). Never "this network", a broadcast, a multicast, a public address.
+ * 172.16/12, 192.168/16), link-local 169.254/16, shared 100.64/10; or a unique
+ * local IPv6 (fc00::/7). Never "this network", a broadcast, a multicast, the loopback (the container itself), a public
+ * address.
  */
 export function lanAddress(value) {
   if (typeof value !== 'string' || value.length > 45) return undefined;
@@ -40,8 +41,7 @@ export function lanAddress(value) {
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && b === 168) ||
       (a === 169 && b === 254) ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      a === 127;
+      (a === 100 && b >= 64 && b <= 127);
     return lan && d !== 0 ? text : undefined;
   }
   if (isIP(text) === 6 && /^f[cd][0-9a-f]{2}:/i.test(text)) return text.toLowerCase();

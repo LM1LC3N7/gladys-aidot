@@ -18,8 +18,10 @@ the notes of the version's GitHub Release.
   accepted for this integration only), then each light driven on the local
   network (TCP 10000, AES): power, brightness, colour, colour temperature, the
   changes pushed by the lights shown at once, a read every interval.
-- Offs that are never held back: kept in `/data` and sent again every 10 s
-  until the light shows them, whatever the cloud says.
+- Offs first: kept in `/data` and sent again every 10 s until the light shows
+  them (4 answered tries at most), whatever the cloud says once the light is
+  known; after a restart, as soon as the cloud gives the key (a pause waited
+  10 min at most).
 - A refused password never sent again by itself; 429 / 5xx of the cloud pause
   it (60 s to 6 h, kept across a restart).
 - Discovery of the addresses through the Gladys core (UDP broadcast 6666).

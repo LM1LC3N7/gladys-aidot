@@ -57,7 +57,7 @@ test/                 node --test: fake cloud and lights on a virtual clock, a r
   stay in memory. `/data` holds a 6-bit mark of a refused password only.
 - **The password is posted only when allowed**: never after a refusal kept for
   the same credentials, but on new credentials saved or the test button.
-- **An Off is never held back** (see the header of `src/app.js`): any change on
+- **An Off goes first once its light is known** (see the header of `src/app.js`): any change on
   its path keeps a test that kills its mutant, listed in `test/mutants.mjs`
   (`node scripts/mutants.mjs` must end with ALL KILLED); no test may hang.
 - **Order**: a read that left before a command or a push of the light never

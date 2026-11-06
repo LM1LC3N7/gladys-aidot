@@ -63,9 +63,9 @@ export const LOCAL = {
   /** The light of the first generation answers no heartbeat: read instead, every 10 s. */
   firstGeneration: 'lk.WIFI-RGBWLight-D0006',
   firstGenerationAttrs: ['OnOff', 'Dimming', 'RGBW', 'CCT'],
-  /** Our prefix in `seq` and `clientId` (python-aidot uses its own, "ha"). */
+  /** Our prefixes in `seq` and `clientId`, of the length of python-aidot's ("ha93", "ha-"). */
   seqPrefix: 'gl01',
-  clientPrefix: 'gladys-',
+  clientPrefix: 'gl-',
 };
 
 export const DISCOVERY = {
@@ -164,6 +164,8 @@ export const TIMINGS = {
   cloudTimeout: 10 * SECOND,
   /** Two reads of the cloud list (any reason: start, Discover, test, restart) this far apart at least. */
   cloudGap: MINUTE,
+  /** An Off held for a light whose key is not known: a pause of the cloud waited this long at most. */
+  guardCloudPause: 10 * MINUTE,
   /** The cloud list (names, addresses, keys) read again this often. */
   cloudRefresh: 6 * HOUR,
   /** A cloud read that failed (network, unreadable answer): new tries 1, 2, 5, 15, 30, then 60 min. */

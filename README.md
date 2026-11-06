@@ -15,7 +15,10 @@ lights shown at once.
   JSON in AES-ECB under the key of each light, `loginReq`, `getDevAttrReq`,
   `setDevAttrReq`; the addresses from the cloud or from a discovery broadcast
   by the Gladys core (`network_discovery` `udp-active-broadcast` port 6666).
-- **Offs never held back**, kept in `/data` until the light shows them off.
+- **Offs first**, kept in `/data` and sent again until the light shows them off
+  (4 answered tries at most). After a restart the keys come from the cloud
+  first: nothing, an Off included, can be driven before that read (never while
+  the credentials are refused or the cloud does not answer).
 - **The password is never sent again by itself after a refusal**; 429 / 5xx
   pause the cloud; nothing secret in a log, the status or `/data`.
 

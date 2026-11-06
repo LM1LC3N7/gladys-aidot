@@ -39,7 +39,7 @@ below.
     `devDiscoveryReq` on UDP port 6666 with the fixed key `T54uednca587` of the
     protocol (AES-256-ECB), its `devId` answers.
 - Changes: rewritten in JavaScript for a Gladys external integration; our own
-  prefixes in `seq` (`gl01`) and `clientId` (`gladys-`) instead of the "ha"
+  prefixes in `seq` (`gl01`) and `clientId` (`gl-`) instead of the "ha"
   ones of the library; one request in flight per light with priorities, answers
   matched by their `seq` and read as untrusted data (bounded frames, strict
   values, a light that does not open with its key refused); the discovery sent

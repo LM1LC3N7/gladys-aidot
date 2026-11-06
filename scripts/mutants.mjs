@@ -3,15 +3,7 @@
 // after 150 s, so a mutant that makes a test hang is reported, never waited for.
 // Usage: node scripts/mutants.mjs [first] [last]   (run it under memcap on the dev VM)
 import { spawn } from 'node:child_process';
-import {
-  cpSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,8 +17,8 @@ cpSync(REPO, work, {
   recursive: true,
   filter: (src) => !['.git', 'node_modules'].includes(basename(src)),
 });
-// Only to run node --test in the copy (never npm ci there).
-symlinkSync(join(REPO, 'node_modules'), join(work, 'node_modules'));
+// A copy of node_modules (never a link: an npm ci of the repository meanwhile would empty it).
+cpSync(join(REPO, 'node_modules'), join(work, 'node_modules'), { recursive: true });
 const tests = readdirSync(join(work, 'test'))
   .filter((f) => f.endsWith('.test.js'))
   .map((f) => `test/${f}`);

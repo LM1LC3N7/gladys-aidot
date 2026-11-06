@@ -77,7 +77,10 @@ test('an Off before the cloud is read: kept, sent as soon as the cloud gives the
   const out = await s.cmd(F(LAMP, 'power'), 0);
   assert.equal(out.success, false);
   assert.match(out.error, /gardé|kept/);
-  assert.match(s.status().message.en, /Off of Lamp: kept, sent as soon as the light is known/);
+  assert.match(
+    s.status().message.en,
+    /Off of Lamp: kept, sent as soon as the AiDot cloud gives the key/,
+  );
   world.cloud.down = false;
   await s.wait(70 * SECOND);
   assert.equal(world.lights.get(LAMP).state.OnOff, 0);
@@ -135,19 +138,25 @@ test('answered but still on: sent again every 10 s, 4 answered tries, then said 
   assert.deepEqual(await s.cmd(F(LAMP, 'power'), 0), { success: true });
 });
 
-test('answered, then turned on at the switch: no longer held, never undone', async (t) => {
+test('r1 I2: answered, then a report "on" equal to the state of before: sent again, never given up as "turned on elsewhere"', async (t) => {
   const s = await setup();
   t.after(() => s.app.stop());
   s.world.ignoreSet.add(LAMP);
-  await s.cmd(F(LAMP, 'power'), 0);
-  s.world.ignoreSet.delete(LAMP);
-  s.world.wall(LAMP, { OnOff: 1 });
+  // The light answers the Off without applying it, then reports its state as it is (on).
+  const off = s.cmd(F(LAMP, 'power'), 0);
+  await s.wait(60);
+  s.world.wall(LAMP, {});
+  const out = await off;
+  assert.equal(out.success, false);
+  assert.equal(s.app.guards.size, 1, 'still held');
+  s.world.wall(LAMP, {});
   await s.wait(100);
+  assert.equal(s.app.guards.size, 1, 'a second report equal to before does not end it either');
+  s.world.ignoreSet.delete(LAMP);
+  await s.wait(12 * SECOND);
+  assert.ok(offs(s) >= 2, 'sent again');
+  assert.equal(s.world.lights.get(LAMP).state.OnOff, 0);
   assert.equal(s.app.guards.size, 0);
-  const sent = offs(s);
-  await s.wait(MINUTE);
-  assert.equal(offs(s), sent);
-  assert.equal(s.world.lights.get(LAMP).state.OnOff, 1);
 });
 
 test('held in /data across a restart: sent once the cloud gives the light, before any read', async (t) => {

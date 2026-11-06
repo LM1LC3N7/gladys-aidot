@@ -21,9 +21,9 @@
 // tick of its last push or command (`mark`). The answer to a read applies its
 // state only if the read left after that mark.
 //
-// Offs (power 0, brightness 0) are protective: never refused by a command or a
-// read in flight (cut once stuck 1 s), the configuration not read, a cloud
-// pause or refusal, a connection that fails. Clicked, an Off cancels the
+// Offs (power 0, brightness 0) are protective: once the light is known (its key
+// in memory), never held by a command or a read in flight (cut once stuck 1 s),
+// the configuration not read, a cloud pause or refusal, a connection that fails. Clicked, an Off cancels the
 // commands of that light still waiting, skips the pause after dead
 // connections on its first send (one connection per click), is tried again
 // for 250 ms, then kept (a guard, in /data):
@@ -31,13 +31,15 @@
 //     connection), or sent without an answer: sent again every 10 s (the
 //     probe, which also opens the connection), as soon as a connection opens
 //     and as soon as the cloud gives the light, never given up;
-//   - answered: a read sent right after judges it: off = done; still on = sent
-//     again 10 s after the last send (4 answered tries at most, then the
-//     status says it; a new click starts again). A push of the light showing
-//     it on after that answer = turned on at the switch or in the app, never
-//     undone (the guard ends).
-// A guard ends when the light is seen off, turned on elsewhere after its
-// answer, a newer command of the light left, or the device is deleted.
+//   - answered: a read sent right after judges it: off = done; still on (a
+//     read or a report of the light) = sent again 10 s after the last send
+//     (4 answered tries at most, then the status says it; a new click starts
+//     again). A report equal to the state of before never ends it.
+// A guard ends when the light is seen off, a newer command of the light left,
+// or the device is deleted. After a restart the key of a light comes from the
+// cloud first: the read an Off held needs waits a pause 10 min at most and a
+// failed read a minute; it cannot happen while the credentials are refused,
+// the cloud does not answer or the configuration cannot be read.
 //
 // Non-protective commands (on, brightness 1-100, colour, temperature) leave
 // in line on the connection of the light, those of one light merged while
@@ -655,13 +657,47 @@ export class App {
   cloudAllowedAt(mono, { force = false } = {}) {
     if (!this.cloud || this.stopped) return Infinity;
     if (this.refusedNow() && !this.mayPost) return Infinity;
+    // An Off held for a light whose key is not known yet (after a restart: the keys stay in
+    // memory only) is protective: its read waits for a pause 10 min at most from the last
+    // attempt, and for a failed read a minute, never more.
+    const needy = this.guardNeedsCloud();
+    const last = this.lastCloudAt ?? -Infinity;
     let at = mono;
-    if (this.paused(mono)) at = Math.max(at, this.pauseUntil);
+    if (this.paused(mono)) {
+      at = Math.max(
+        at,
+        needy ? Math.min(this.pauseUntil, last + TIMINGS.guardCloudPause) : this.pauseUntil,
+      );
+    }
     if (!force) {
       if (this.lastCloudAt !== undefined) at = Math.max(at, this.lastCloudAt + TIMINGS.cloudGap);
-      if (this.cloudRetryAt !== undefined) at = Math.max(at, this.cloudRetryAt);
+      if (this.cloudRetryAt !== undefined) {
+        at = Math.max(
+          at,
+          needy ? Math.min(this.cloudRetryAt, last + TIMINGS.cloudGap) : this.cloudRetryAt,
+        );
+      }
     }
     return at;
+  }
+
+  /** Why an Off held for a light not known cannot leave yet (the key from the cloud). */
+  guardWhy(mono) {
+    if (this.config.error || !this.cloud) return 'config';
+    if (this.refusedNow() && !this.mayPost) return 'refused';
+    if (this.cloudOkAt !== undefined) return 'unlisted';
+    if (this.paused(mono)) return 'paused';
+    if (this.cloudError) return 'failed';
+    return 'pending';
+  }
+
+  /** An Off held for a light not known yet, and no good read of the cloud since the start. */
+  guardNeedsCloud() {
+    if (this.cloudOkAt !== undefined || !this.configLoaded) return false;
+    for (const guard of this.guards.values()) {
+      if (!this.usable(this.lights.get(guard.id))) return true;
+    }
+    return false;
   }
 
   /**
@@ -811,6 +847,12 @@ export class App {
       if (!light.ip && before?.ip) light.ip = before.ip;
       entry.light = light;
       entry.listed = true;
+      if (before && this.linkKeyOf(entry) !== entry.lastKey) {
+        // The address or the keys changed: a new identity failure may ask the cloud again soon.
+        entry.cloudAsks = 0;
+        entry.nextCloudAsk = undefined;
+      }
+      entry.lastKey = this.linkKeyOf(entry);
       if (entry.link && entry.linkKey !== this.linkKeyOf(entry)) this.dropLink(entry);
     }
     this.lightCount = count;
@@ -1027,8 +1069,15 @@ export class App {
     const loginUnanswered = err.code === 'timeout' && err.detail === 'no answer to the login';
     if (err.code === 'identity' || err.code === 'login' || loginUnanswered) {
       // Another light at this address, or the key or the password changed (a light does not
-      // answer a login it cannot open): the cloud and the discovery tell (each at its own pace).
-      this.askCloud();
+      // answer a login it cannot open): the cloud and the discovery tell. A read of the cloud
+      // that did not change the light: the next one asked twice later (1, 2, 4… min, 6 h at most).
+      const mono = this.monotonic();
+      if (mono >= (entry.nextCloudAsk ?? -Infinity)) {
+        entry.cloudAsks = (entry.cloudAsks ?? 0) + 1;
+        entry.nextCloudAsk =
+          mono + Math.min(TIMINGS.cloudGap * 2 ** (entry.cloudAsks - 1), TIMINGS.cloudRefresh);
+        this.askCloud();
+      }
       this.askDiscovery();
     } else if (entry.failures >= 2) {
       this.askDiscovery();
@@ -1148,6 +1197,9 @@ export class App {
     let kind = 'push';
     if (job) kind = job.method === 'getDevAttrReq' ? 'read' : 'answer';
     else if (at !== undefined) kind = this.isSetSeq(entry, seq) ? 'answer' : 'read';
+    // The answer to a request that is not matched (no `seq` echoed, or an unknown one): its time
+    // of departure is not known, so it is never applied (a push carries no answer code).
+    else if (message.code !== undefined || /Resp$/.test(message.method ?? '')) return;
     // A read that left before the last command or push of the light, or the answer to a command
     // older than the last one: what it says is not the state of now.
     if (kind === 'read' && !((at ?? 0) > entry.mark)) return;
@@ -1243,18 +1295,25 @@ export class App {
   due(guard, mono) {
     if (guard.inFlight || guard.userInFlight || !this.canSend(guard)) return false;
     if (!guard.okSeen) return !guard.left || mono - guard.sentAt >= TIMINGS.guardProbe * 0.9;
-    return guard.contradicted && mono - guard.sentAt >= TIMINGS.guardProbe;
+    return guard.contradicted && mono - guard.sentAt >= TIMINGS.guardProbe * 0.9;
   }
 
   /**
    * An observation of the light: `kind` push (pushed by the light), answer (to one of our
-   * commands), read (the answer to a read that left at `tick`). Off: the guard ends. On: a push
-   * after the guard was answered = turned on elsewhere (ends, never undone); a read that left
-   * after the send of the Off, or the answer to a command, contradicts it (sent again).
+   * commands), read (the answer to a read that left at `tick`). Off: the guard ends. On, after
+   * the Off was answered: it contradicts it (sent again, 4 answered tries at most).
    */
   judgeGuard(entry, power, kind, tick) {
     const guard = this.guards.get(entry.id);
-    if (!guard || guard.inFlight || power === undefined) return;
+    if (!guard || power === undefined) return;
+    // Seen off (a push, an answer, or a read that left after the click), even while the Off is
+    // in flight: done.
+    if (power === false && (kind !== 'read' || tick > guard.tick)) {
+      this.logger.info(`aidot: Off of ${shortId(entry.id)} seen applied`);
+      this.endGuard(guard, 'off');
+      return;
+    }
+    if (guard.inFlight) return;
     if (kind === 'read' && !(tick > guard.sentTick && guard.left)) {
       // A read that left before the Off was sent: it says nothing of the Off.
       if (power === false && tick > guard.tick) {
@@ -1268,12 +1327,9 @@ export class App {
       this.endGuard(guard, 'off');
       return;
     }
-    if (kind === 'push') {
-      if (!guard.okSeen) return;
-      this.logger.info(`aidot: ${shortId(entry.id)} turned on elsewhere, Off no longer held`);
-      this.endGuard(guard, 'on');
-      return;
-    }
+    // On, after the Off was answered (a read that left after it, or a report of the light): not
+    // applied, sent again within the 4 answered tries. A report equal to the state of before is
+    // never taken for a light turned on elsewhere.
     if (!guard.okSeen) return;
     if (!guard.contradicted) {
       guard.contradicted = true;
@@ -1517,7 +1573,6 @@ export class App {
     if (ended === 'off') return undefined;
     this.armProbe();
     this.refreshStatus().catch(() => {});
-    if (ended === 'on') throw this.refusal(ERRORS.offOverridden);
     if (ended === 'superseded' || ended === 'deleted') throw this.refusal(ERRORS.cancelledByStop);
     throw this.refusal(ERRORS.offUnconfirmed);
   }
@@ -1849,7 +1904,10 @@ export class App {
         parts.push(T.paused(age(this.pauseUntil - mono)));
       } else if (this.cloudError && this.cloudRetryAt !== undefined) {
         parts.push(
-          T.cloudFailed(cloudReasonOf(this.cloudError), age(Math.max(0, this.cloudRetryAt - mono))),
+          T.cloudFailed(
+            cloudReasonOf(this.cloudError),
+            age(Math.max(0, (this.cloudDueAt ?? this.cloudRetryAt) - mono)),
+          ),
         );
       } else if (this.cloudOkAt === undefined) {
         if (this.cloudReading) parts.push(T.signingIn);
@@ -1877,7 +1935,8 @@ export class App {
     }
     for (const guard of this.guards.values()) {
       const name = this.nameOf(guard.id);
-      if (!this.usable(this.lights.get(guard.id))) parts.push(T.guardUnknown(name));
+      if (!this.usable(this.lights.get(guard.id)))
+        parts.push(T.guardUnknown(name, this.guardWhy(mono)));
       else if (!this.canSend(guard)) parts.push(T.guardExhausted(name));
       else if (!guard.okSeen) parts.push(T.guardPending(name));
       else parts.push(T.guardWaiting(name, guard.tries));
@@ -1911,6 +1970,9 @@ export class App {
     const left = this.lastTestAt + TIMINGS.testCooldown - mono;
     if (left > 0) return word(T.test.cooldown(age(left)), lang);
     this.lastTestAt = mono;
+    // A read in progress (a start, Discover) ends first: the click gets a read of its own.
+    if (this.cloudReading) await this.cloudReading.catch(() => {});
+    if (!this.cloud) return word(T.test.config(this.config.error), lang);
     // A click: the session is renewed with the password typed (a refusal kept is lifted by it).
     this.cloud.session = undefined;
     const result = await this.readCloud({ force: true, click: true });
