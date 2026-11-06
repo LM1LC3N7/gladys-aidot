@@ -81,6 +81,8 @@ export function fakeAidot({ clock, lights = LIGHTS() } = {}) {
     cloud: {
       /** The account refuses the password (the fake cannot read it: RSA). */
       refuse: false,
+      /** The sign-in answers 400 with another code (an account locked, say): never a refusal. */
+      signInError: false,
       /** A status for every read of /houses (401: a session refused for ever). */
       housesStatus: undefined,
       requests: [],
@@ -231,6 +233,7 @@ async function transport(world, url, { method = 'GET', headers = {}, body } = {}
     return json(400, { code: 1 });
   if (path === '/users/loginWithFreeVerification') {
     cloud.signIns += 1;
+    if (cloud.signInError) return json(400, { code: 560099, desc: 'locked' });
     const b = request.body;
     if (b.username !== EMAIL || typeof b.password !== 'string' || b.password.length < 100)
       return json(400, { code: 560080, desc: 'wrong' });

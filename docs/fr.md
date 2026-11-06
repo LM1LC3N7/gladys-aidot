@@ -22,10 +22,11 @@ couleur et température de couleur, et les changements envoyés par les lumière
   pilotée directement sur votre réseau (port TCP 10000, AES avec la clé de la
   lumière) : aucune commande ne passe par le cloud. L’adresse vient du cloud ;
   quand elle manque ou n’est plus bonne, une demande de découverte est
-  diffusée par Gladys lui-même (UDP 6666, comme le fait l’application AiDot)
-  pour la retrouver. Comme dans l’application AiDot, cette demande porte
-  l’identifiant de votre compte AiDot vers tous les appareils de votre réseau
-  local (sous la clé publique du protocole).
+  diffusée par Gladys lui-même (UDP 6666, comme le fait python-aidot, la
+  bibliothèque du fabricant) pour la retrouver. Comme dans python-aidot, cette
+  demande porte l’identifiant de votre compte AiDot vers tous les appareils de
+  votre réseau local (avec la clé fixe du protocole, publiée : lisible par tout
+  appareil du réseau).
 - Le mot de passe, les jetons de la session, votre identifiant d’utilisateur et
   les clés des lumières ne sont jamais écrits dans un journal, le statut ou le
   dossier `/data` de l’intégration ; les jetons et les clés restent en mémoire.
@@ -113,8 +114,10 @@ cette lumière part, ou quand l’appareil est supprimé dans Gladys.
 cloud**, arrêt compris : les clés des lumières ne sont jamais écrites dans
 `/data`, elles viennent d’abord du cloud. Cette lecture a lieu une minute au
 plus après le dernier essai en temps normal. Pour un arrêt gardé, une demande
-d’attente d’AiDot est attendue 10 minutes au plus et un cloud injoignable est
-réessayé toutes les minutes. L’arrêt ne peut pas partir tant que les
+d’attente d’AiDot est attendue 10 minutes au plus, un cloud injoignable est
+réessayé toutes les minutes, et un cloud qui répond une erreur (connexion
+comprise) après 1, 2, 5, puis toutes les 10 minutes : jamais un mot de passe
+posté toutes les minutes. L’arrêt ne peut pas partir tant que les
 identifiants sont refusés (jusqu’à ce que vous les corrigiez ou cliquiez sur
 **Tester la connexion**), tant que le cloud ne répond pas, ou tant que la
 configuration ne peut pas être lue depuis Gladys : le statut dit lequel.

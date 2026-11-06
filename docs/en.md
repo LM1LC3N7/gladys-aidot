@@ -21,9 +21,10 @@ once.
   directly on your network (TCP port 10000, AES with the key of the light): no
   command goes through the cloud. The address comes from the cloud; when it is
   missing or wrong, a discovery request is broadcast by Gladys itself
-  (UDP 6666, as the AiDot app does) to find it. As in the AiDot app, that request
-  carries the id of your AiDot account to every device of your local network
-  (under the public key of the protocol).
+  (UDP 6666, as python-aidot, the maker's library, does) to find it. As in
+  python-aidot, that request carries the id of your AiDot account to every
+  device of your local network (with the fixed key of the protocol, which is
+  published: readable by any device of the network).
 - The password, the tokens of the session, your user id and the keys of the
   lights are never written to a log, the status or the `/data` folder of the
   integration; the tokens and the keys stay in memory.
@@ -106,7 +107,9 @@ command of that light leaves, or when the device is deleted in Gladys.
 an Off included: the keys of the lights are never written to `/data`, so they
 come from the cloud first. That read comes a minute after the last attempt at
 most in normal times. For an Off held, a pause asked by AiDot is waited 10
-minutes at most and a cloud not reached is tried every minute. The Off cannot
+minutes at most, a cloud not reached is tried every minute, and a cloud that
+answers an error (the sign-in included) after 1, 2, 5, then every 10 minutes:
+never a password posted every minute. The Off cannot
 leave while the credentials are refused (until you correct them or click
 **Test the connection**), while the cloud does not answer, or while the
 configuration cannot be read from Gladys: the status says which.

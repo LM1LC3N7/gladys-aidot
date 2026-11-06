@@ -4,6 +4,13 @@ Handoff document: what is done, what was decided, what comes next.
 
 ## Status
 
+- [x] **Review r2** (2026-11-06): REFUSÉ (I5 important, 3 mineurs); fixed: for an
+      Off held, only a cloud that does not answer is retried every minute; an
+      error answered keeps the growing retries, 10 min at most, status and docs
+      exact (I5); docs of the discovery (m1); a good read ends a pause (m2);
+      the reviewer's 3 surviving mutants killed (m3). Tests in
+      `test/review2.test.js`.
+
 - [x] **Review r1** (2026-11-06): REFUSÉ (4 importants, 6 mineurs); fixed: an
       Off held after a restart no longer waits for a whole 429 pause nor the
       growing retries, and every text says exactly when it cannot leave (I1); a
@@ -42,7 +49,9 @@ Handoff document: what is done, what was decided, what comes next.
   sealed: no secret in `/data`), so after a restart nothing, an Off included,
   can be driven before the first read of the cloud: a minute after the last
   attempt at most in normal times; for an Off held a pause is waited 10 min at
-  most and a failed read retried every minute (review r1, I1); never while the
+  most, a cloud that does not answer (network, timeout) retried every minute,
+  an error answered (the sign-in included) retried after 1, 2, 5, then every
+  10 min (review r1 I1, r2 I5); a good read ends a pause (r2 m2); never while the
   credentials are refused, the cloud does not answer or the configuration
   cannot be read. Said exactly in the docs, README and the status.
 - Only the sign-in route refuses the credentials (code 560080). A 401 or a

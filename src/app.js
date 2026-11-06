@@ -674,11 +674,24 @@ export class App {
       if (this.cloudRetryAt !== undefined) {
         at = Math.max(
           at,
-          needy ? Math.min(this.cloudRetryAt, last + TIMINGS.cloudGap) : this.cloudRetryAt,
+          needy ? Math.min(this.cloudRetryAt, last + this.needyRetry()) : this.cloudRetryAt,
         );
       }
     }
     return at;
+  }
+
+  /**
+   * For an Off held whose key is missing: a cloud that does not answer (network, timeout) is
+   * tried every minute; an error answered (the sign-in included: never a password posted every
+   * minute) keeps the growing retries, 10 min apart at most.
+   */
+  needyRetry() {
+    return this.noAnswer(this.cloudError) ? TIMINGS.cloudGap : TIMINGS.guardCloudPause;
+  }
+
+  noAnswer(err) {
+    return err instanceof CloudError && (err.kind === 'network' || err.kind === 'timeout');
   }
 
   /** Why an Off held for a light not known cannot leave yet (the key from the cloud). */
@@ -687,7 +700,7 @@ export class App {
     if (this.refusedNow() && !this.mayPost) return 'refused';
     if (this.cloudOkAt !== undefined) return 'unlisted';
     if (this.paused(mono)) return 'paused';
-    if (this.cloudError) return 'failed';
+    if (this.cloudError) return this.noAnswer(this.cloudError) ? 'failed' : 'error';
     return 'pending';
   }
 
@@ -782,6 +795,8 @@ export class App {
     this.cloudError = undefined;
     this.cloudFailures = 0;
     this.cloudRetryAt = undefined;
+    // A good read ends a pause (the next one in 6 h).
+    this.pauseUntil = undefined;
     this.pauseStep = 0;
     if (this.memory.refused) {
       this.memory.refused = undefined;
@@ -1357,7 +1372,12 @@ export class App {
     for (const guard of this.guards.values()) {
       if (this.due(guard, mono)) {
         const entry = this.lights.get(guard.id);
-        if (!this.usable(entry)) this.askCloud();
+        if (!this.usable(entry)) {
+          // The key from the cloud until a first good read; then a light without address is
+          // looked for by the discovery, one not in the list waits for the 6 h read.
+          if (this.cloudOkAt === undefined) this.askCloud();
+          else if (entry?.light && !entry.light.ip) this.askDiscovery();
+        }
         this.sendGuard(guard).catch(() => {});
       } else if (this.awaitingJudgement(guard)) {
         const entry = this.lights.get(guard.id);

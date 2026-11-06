@@ -142,6 +142,10 @@ const GUARD_WHY = {
     'the cloud does not answer: tried every minute',
     'le cloud ne répond pas : essayé toutes les minutes',
   ),
+  error: both(
+    'the cloud answers an error: tried again after 1, 2, 5, then every 10 min',
+    'le cloud répond une erreur : réessayé après 1, 2, 5, puis toutes les 10 min',
+  ),
   paused: both(
     'the cloud asked to wait: tried every 10 min at most',
     'le cloud a demandé d’attendre : essayé toutes les 10 min au plus',

@@ -202,7 +202,7 @@ export const MUTANTS = [
   ),
   M(
     A,
-    'needy ? Math.min(this.cloudRetryAt, last + TIMINGS.cloudGap) : this.cloudRetryAt,',
+    'needy ? Math.min(this.cloudRetryAt, last + this.needyRetry()) : this.cloudRetryAt,',
     'this.cloudRetryAt,',
     'r1 I1: an Off held waits for the growing retries',
   ),
@@ -235,5 +235,42 @@ export const MUTANTS = [
     "if (power === false && (kind !== 'read' || tick > guard.tick)) {",
     'if (false) {',
     'r1 I3: an Off seen off while in flight not ended',
+  ),
+  // --- Review r2
+  M(
+    A,
+    'return this.noAnswer(this.cloudError) ? TIMINGS.cloudGap : TIMINGS.guardCloudPause;',
+    'return TIMINGS.cloudGap;',
+    'r2 I5: an Off held posts the password every minute to a sign-in answering an error',
+  ),
+  M(
+    A,
+    '    // A good read ends a pause (the next one in 6 h).\n    this.pauseUntil = undefined;\n',
+    '\n',
+    'r2 m2: a pause still shown after a good read',
+  ),
+  M(
+    A,
+    '    if (this.cloudOkAt !== undefined || !this.configLoaded) return false;',
+    '    if (!this.configLoaded) return false;',
+    'r2 m3#1: an Off held for a light not listed keeps the minute after a good read',
+  ),
+  M(
+    A,
+    'if (this.cloudOkAt === undefined) this.askCloud();',
+    'if (true) this.askCloud();',
+    'r2 m3#1: the probe asks the cloud every minute for a light not listed',
+  ),
+  M(
+    A,
+    '      if (before && this.linkKeyOf(entry) !== entry.lastKey) {',
+    '      if (false) {',
+    'r2 m3#2: the growing wait not started again when the key changed',
+  ),
+  M(
+    A,
+    "    else if (message.code !== undefined || /Resp$/.test(message.method ?? '')) return;",
+    '    else if (message.code !== undefined) return;',
+    'r2 m3#4: a ...Resp without code taken for a push',
   ),
 ];
