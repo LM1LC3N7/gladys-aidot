@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
-  "version": "1.0.0",
+  "name": "gladys-aidot",
+  "version": "0.1.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Gladys Assistant integration for the AiDot Wi-Fi lights (Linkind, OREiN...): the AiDot cloud for the list and the keys, then the lights driven on the local network.",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test"
+    "test": "node --test --test-timeout=60000"
   },
   "engines": {
     "node": ">=22"

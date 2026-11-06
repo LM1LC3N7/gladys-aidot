@@ -1,177 +1,1051 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "AiDot",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "AiDot Wi-Fi lights (Linkind, OREiN…): on, off, brightness, colour, white temperature.",
+    "fr": "Lumières Wi-Fi AiDot (Linkind, OREiN…) : marche, arrêt, intensité, couleur, blanc."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-aidot:0.1.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-aidot/main/cover.png",
+  "categories": ["lighting"],
   "transports": ["local", "cloud"],
+  "network_discovery": [
+    {
+      "type": "udp-active-broadcast",
+      "ports": [6666]
+    }
+  ],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
-      "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+      "label": {
+        "en": "Your AiDot lights",
+        "fr": "Vos lumières AiDot"
       },
-      "links": [
+      "description": {
+        "en": "Brings the AiDot Wi-Fi lights (Linkind, OREiN and the other brands set up with the AiDot app) into Gladys: on / off, brightness, colour and colour temperature, the changes pushed by the lights shown at once. The AiDot account is used only to read the list of your lights with their address and their local keys (with the application id of the maker's own library, python-aidot); the lights are then driven on your network, without the cloud. An Off (power 0, brightness 0) needs no option and goes first: it is kept and sent again every 10 s until the light shows it off. Never tested with a real device: tell us on the forum how it goes. Not affiliated with AiDot.",
+        "fr": "Intègre à Gladys les lumières Wi-Fi AiDot (Linkind, OREiN et les autres marques installées avec l’application AiDot) : marche / arrêt, intensité, couleur et température de couleur, les changements envoyés par les lumières affichés aussitôt. Le compte AiDot sert seulement à lire la liste de vos lumières avec leur adresse et leurs clés locales (avec l’identifiant d’application de la bibliothèque du fabricant, python-aidot) ; les lumières sont ensuite pilotées sur votre réseau, sans le cloud. Un arrêt (allumage 0, intensité 0) ne demande aucune option et passe en premier : il est gardé et renvoyé toutes les 10 s jusqu’à ce que la lumière se montre éteinte. Jamais testé avec un vrai appareil : dites-nous sur le forum comment ça se passe. Sans lien avec AiDot."
+      }
+    },
+    {
+      "key": "email",
+      "type": "string",
+      "label": {
+        "en": "E-mail of the AiDot account",
+        "fr": "E-mail du compte AiDot"
+      },
+      "description": {
+        "en": "The e-mail you sign in to the AiDot app with.",
+        "fr": "L’e-mail avec lequel vous vous connectez à l’application AiDot."
+      },
+      "placeholder": {
+        "en": "me@example.com",
+        "fr": "moi@exemple.fr"
+      },
+      "required": true
+    },
+    {
+      "key": "password",
+      "type": "secret",
+      "label": {
+        "en": "Password of the AiDot account",
+        "fr": "Mot de passe du compte AiDot"
+      },
+      "description": {
+        "en": "Kept by Gladys in its database, never shown again, sent only to the AiDot cloud when the integration signs in. If AiDot refuses it, it is not sent again until you save other credentials or click \"Test the connection\".",
+        "fr": "Gardé par Gladys dans sa base, jamais réaffiché, envoyé seulement au cloud AiDot quand l’intégration se connecte. Si AiDot le refuse, il n’est pas renvoyé tant que vous n’enregistrez pas d’autres identifiants ou ne cliquez pas sur « Tester la connexion »."
+      },
+      "required": true
+    },
+    {
+      "key": "country",
+      "type": "select",
+      "label": {
+        "en": "Country of the account",
+        "fr": "Pays du compte"
+      },
+      "description": {
+        "en": "The country chosen when the AiDot account was made: it picks the AiDot cloud (Europe, America or Asia).",
+        "fr": "Le pays choisi à la création du compte AiDot : il désigne le cloud AiDot (Europe, Amérique ou Asie)."
+      },
+      "required": false,
+      "default": "FR",
+      "options": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "value": "AF",
+          "label": {
+            "en": "Afghanistan",
+            "fr": "Afghanistan"
+          }
+        },
+        {
+          "value": "AL",
+          "label": {
+            "en": "Albania",
+            "fr": "Albanie"
+          }
+        },
+        {
+          "value": "AI",
+          "label": {
+            "en": "Anguilla",
+            "fr": "Anguilla"
+          }
+        },
+        {
+          "value": "AG",
+          "label": {
+            "en": "Antigua and Barbuda",
+            "fr": "Antigua-et-Barbuda"
+          }
+        },
+        {
+          "value": "AR",
+          "label": {
+            "en": "Argentina",
+            "fr": "Argentine"
+          }
+        },
+        {
+          "value": "AM",
+          "label": {
+            "en": "Armenia",
+            "fr": "Arménie"
+          }
+        },
+        {
+          "value": "AU",
+          "label": {
+            "en": "Australia",
+            "fr": "Australie"
+          }
+        },
+        {
+          "value": "AT",
+          "label": {
+            "en": "Austria",
+            "fr": "Autriche"
+          }
+        },
+        {
+          "value": "AZ",
+          "label": {
+            "en": "Azerbaijan",
+            "fr": "Azerbaïdjan"
+          }
+        },
+        {
+          "value": "BS",
+          "label": {
+            "en": "Bahamas",
+            "fr": "Bahamas"
+          }
+        },
+        {
+          "value": "BH",
+          "label": {
+            "en": "Bahrain",
+            "fr": "Bahreïn"
+          }
+        },
+        {
+          "value": "BD",
+          "label": {
+            "en": "Bangladesh",
+            "fr": "Bangladesh"
+          }
+        },
+        {
+          "value": "BB",
+          "label": {
+            "en": "Barbados",
+            "fr": "Barbade"
+          }
+        },
+        {
+          "value": "BE",
+          "label": {
+            "en": "Belgium",
+            "fr": "Belgique"
+          }
+        },
+        {
+          "value": "BZ",
+          "label": {
+            "en": "Belize",
+            "fr": "Belize"
+          }
+        },
+        {
+          "value": "BM",
+          "label": {
+            "en": "Bermuda",
+            "fr": "Bermudes"
+          }
+        },
+        {
+          "value": "BT",
+          "label": {
+            "en": "Bhutan",
+            "fr": "Bhoutan"
+          }
+        },
+        {
+          "value": "BO",
+          "label": {
+            "en": "Bolivia",
+            "fr": "Bolivie"
+          }
+        },
+        {
+          "value": "BR",
+          "label": {
+            "en": "Brazil",
+            "fr": "Brésil"
+          }
+        },
+        {
+          "value": "BN",
+          "label": {
+            "en": "Brunei",
+            "fr": "Brunei"
+          }
+        },
+        {
+          "value": "BG",
+          "label": {
+            "en": "Bulgaria",
+            "fr": "Bulgarie"
+          }
+        },
+        {
+          "value": "KH",
+          "label": {
+            "en": "Cambodia",
+            "fr": "Cambodge"
+          }
+        },
+        {
+          "value": "CA",
+          "label": {
+            "en": "Canada",
+            "fr": "Canada"
+          }
+        },
+        {
+          "value": "KY",
+          "label": {
+            "en": "Cayman Islands",
+            "fr": "Îles Caïmans"
+          }
+        },
+        {
+          "value": "CL",
+          "label": {
+            "en": "Chile",
+            "fr": "Chili"
+          }
+        },
+        {
+          "value": "CO",
+          "label": {
+            "en": "Colombia",
+            "fr": "Colombie"
+          }
+        },
+        {
+          "value": "CR",
+          "label": {
+            "en": "Costa Rica",
+            "fr": "Costa Rica"
+          }
+        },
+        {
+          "value": "HR",
+          "label": {
+            "en": "Croatia",
+            "fr": "Croatie"
+          }
+        },
+        {
+          "value": "CU",
+          "label": {
+            "en": "Cuba",
+            "fr": "Cuba"
+          }
+        },
+        {
+          "value": "CY",
+          "label": {
+            "en": "Cyprus",
+            "fr": "Chypre"
+          }
+        },
+        {
+          "value": "CZ",
+          "label": {
+            "en": "Czech Republic",
+            "fr": "Tchéquie"
+          }
+        },
+        {
+          "value": "DK",
+          "label": {
+            "en": "Denmark",
+            "fr": "Danemark"
+          }
+        },
+        {
+          "value": "DO",
+          "label": {
+            "en": "Dominican Republic",
+            "fr": "République dominicaine"
+          }
+        },
+        {
+          "value": "EC",
+          "label": {
+            "en": "Ecuador",
+            "fr": "Équateur"
+          }
+        },
+        {
+          "value": "SV",
+          "label": {
+            "en": "El Salvador",
+            "fr": "Salvador"
+          }
+        },
+        {
+          "value": "EE",
+          "label": {
+            "en": "Estonia",
+            "fr": "Estonie"
+          }
+        },
+        {
+          "value": "FI",
+          "label": {
+            "en": "Finland",
+            "fr": "Finlande"
+          }
+        },
+        {
+          "value": "FR",
+          "label": {
+            "en": "France",
+            "fr": "France"
+          }
+        },
+        {
+          "value": "GF",
+          "label": {
+            "en": "French Guiana",
+            "fr": "Guyane française"
+          }
+        },
+        {
+          "value": "GE",
+          "label": {
+            "en": "Georgia",
+            "fr": "Géorgie"
+          }
+        },
+        {
+          "value": "DE",
+          "label": {
+            "en": "Germany",
+            "fr": "Allemagne"
+          }
+        },
+        {
+          "value": "GR",
+          "label": {
+            "en": "Greece",
+            "fr": "Grèce"
+          }
+        },
+        {
+          "value": "GD",
+          "label": {
+            "en": "Grenada",
+            "fr": "Grenade"
+          }
+        },
+        {
+          "value": "GT",
+          "label": {
+            "en": "Guatemala",
+            "fr": "Guatemala"
+          }
+        },
+        {
+          "value": "GY",
+          "label": {
+            "en": "Guyana",
+            "fr": "Guyana"
+          }
+        },
+        {
+          "value": "HT",
+          "label": {
+            "en": "Haiti",
+            "fr": "Haïti"
+          }
+        },
+        {
+          "value": "HN",
+          "label": {
+            "en": "Honduras",
+            "fr": "Honduras"
+          }
+        },
+        {
+          "value": "HU",
+          "label": {
+            "en": "Hungary",
+            "fr": "Hongrie"
+          }
+        },
+        {
+          "value": "IS",
+          "label": {
+            "en": "Iceland",
+            "fr": "Islande"
+          }
+        },
+        {
+          "value": "IN",
+          "label": {
+            "en": "India",
+            "fr": "Inde"
+          }
+        },
+        {
+          "value": "ID",
+          "label": {
+            "en": "Indonesia",
+            "fr": "Indonésie"
+          }
+        },
+        {
+          "value": "IR",
+          "label": {
+            "en": "Iran",
+            "fr": "Iran"
+          }
+        },
+        {
+          "value": "IQ",
+          "label": {
+            "en": "Iraq",
+            "fr": "Irak"
+          }
+        },
+        {
+          "value": "IE",
+          "label": {
+            "en": "Ireland",
+            "fr": "Irlande"
+          }
+        },
+        {
+          "value": "IL",
+          "label": {
+            "en": "Israel",
+            "fr": "Israël"
+          }
+        },
+        {
+          "value": "IT",
+          "label": {
+            "en": "Italy",
+            "fr": "Italie"
+          }
+        },
+        {
+          "value": "JM",
+          "label": {
+            "en": "Jamaica",
+            "fr": "Jamaïque"
+          }
+        },
+        {
+          "value": "JP",
+          "label": {
+            "en": "Japan",
+            "fr": "Japon"
+          }
+        },
+        {
+          "value": "JO",
+          "label": {
+            "en": "Jordan",
+            "fr": "Jordanie"
+          }
+        },
+        {
+          "value": "KZ",
+          "label": {
+            "en": "Kazakhstan",
+            "fr": "Kazakhstan"
+          }
+        },
+        {
+          "value": "KR",
+          "label": {
+            "en": "Korea",
+            "fr": "Corée du Sud"
+          }
+        },
+        {
+          "value": "KW",
+          "label": {
+            "en": "Kuwait",
+            "fr": "Koweït"
+          }
+        },
+        {
+          "value": "KG",
+          "label": {
+            "en": "Kyrgyzstan",
+            "fr": "Kirghizstan"
+          }
+        },
+        {
+          "value": "LA",
+          "label": {
+            "en": "Laos",
+            "fr": "Laos"
+          }
+        },
+        {
+          "value": "LV",
+          "label": {
+            "en": "Latvia",
+            "fr": "Lettonie"
+          }
+        },
+        {
+          "value": "LB",
+          "label": {
+            "en": "Lebanon",
+            "fr": "Liban"
+          }
+        },
+        {
+          "value": "LI",
+          "label": {
+            "en": "Liechtenstein",
+            "fr": "Liechtenstein"
+          }
+        },
+        {
+          "value": "LT",
+          "label": {
+            "en": "Lithuania",
+            "fr": "Lituanie"
+          }
+        },
+        {
+          "value": "LU",
+          "label": {
+            "en": "Luxembourg",
+            "fr": "Luxembourg"
+          }
+        },
+        {
+          "value": "MY",
+          "label": {
+            "en": "Malaysia",
+            "fr": "Malaisie"
+          }
+        },
+        {
+          "value": "MV",
+          "label": {
+            "en": "Maldives",
+            "fr": "Maldives"
+          }
+        },
+        {
+          "value": "MT",
+          "label": {
+            "en": "Malta",
+            "fr": "Malte"
+          }
+        },
+        {
+          "value": "MX",
+          "label": {
+            "en": "Mexico",
+            "fr": "Mexique"
+          }
+        },
+        {
+          "value": "MD",
+          "label": {
+            "en": "Moldova",
+            "fr": "Moldavie"
+          }
+        },
+        {
+          "value": "MC",
+          "label": {
+            "en": "Monaco",
+            "fr": "Monaco"
+          }
+        },
+        {
+          "value": "MN",
+          "label": {
+            "en": "Mongolia",
+            "fr": "Mongolie"
+          }
+        },
+        {
+          "value": "ME",
+          "label": {
+            "en": "Montenegro",
+            "fr": "Monténégro"
+          }
+        },
+        {
+          "value": "MS",
+          "label": {
+            "en": "Montserrat",
+            "fr": "Montserrat"
+          }
+        },
+        {
+          "value": "MM",
+          "label": {
+            "en": "Myanmar",
+            "fr": "Myanmar (Birmanie)"
+          }
+        },
+        {
+          "value": "NP",
+          "label": {
+            "en": "Nepal",
+            "fr": "Népal"
+          }
+        },
+        {
+          "value": "NL",
+          "label": {
+            "en": "Netherlands",
+            "fr": "Pays-Bas"
+          }
+        },
+        {
+          "value": "NZ",
+          "label": {
+            "en": "New Zealand",
+            "fr": "Nouvelle-Zélande"
+          }
+        },
+        {
+          "value": "NI",
+          "label": {
+            "en": "Nicaragua",
+            "fr": "Nicaragua"
+          }
+        },
+        {
+          "value": "KP",
+          "label": {
+            "en": "North Korea",
+            "fr": "Corée du Nord"
+          }
+        },
+        {
+          "value": "MK",
+          "label": {
+            "en": "North Macedonia",
+            "fr": "Macédoine du Nord"
+          }
+        },
+        {
+          "value": "NO",
+          "label": {
+            "en": "Norway",
+            "fr": "Norvège"
+          }
+        },
+        {
+          "value": "OM",
+          "label": {
+            "en": "Oman",
+            "fr": "Oman"
+          }
+        },
+        {
+          "value": "PK",
+          "label": {
+            "en": "Pakistan",
+            "fr": "Pakistan"
+          }
+        },
+        {
+          "value": "PS",
+          "label": {
+            "en": "Palestine",
+            "fr": "Territoires palestiniens"
+          }
+        },
+        {
+          "value": "PA",
+          "label": {
+            "en": "Panama",
+            "fr": "Panama"
+          }
+        },
+        {
+          "value": "PY",
+          "label": {
+            "en": "Paraguay",
+            "fr": "Paraguay"
+          }
+        },
+        {
+          "value": "PE",
+          "label": {
+            "en": "Peru",
+            "fr": "Pérou"
+          }
+        },
+        {
+          "value": "PH",
+          "label": {
+            "en": "Philippines",
+            "fr": "Philippines"
+          }
+        },
+        {
+          "value": "PL",
+          "label": {
+            "en": "Poland",
+            "fr": "Pologne"
+          }
+        },
+        {
+          "value": "PT",
+          "label": {
+            "en": "Portugal",
+            "fr": "Portugal"
+          }
+        },
+        {
+          "value": "QA",
+          "label": {
+            "en": "Qatar",
+            "fr": "Qatar"
+          }
+        },
+        {
+          "value": "RO",
+          "label": {
+            "en": "Romania",
+            "fr": "Roumanie"
+          }
+        },
+        {
+          "value": "RU",
+          "label": {
+            "en": "Russia",
+            "fr": "Russie"
+          }
+        },
+        {
+          "value": "SM",
+          "label": {
+            "en": "San Marino",
+            "fr": "Saint-Marin"
+          }
+        },
+        {
+          "value": "SA",
+          "label": {
+            "en": "Saudi Arabia",
+            "fr": "Arabie saoudite"
+          }
+        },
+        {
+          "value": "RS",
+          "label": {
+            "en": "Serbia",
+            "fr": "Serbie"
+          }
+        },
+        {
+          "value": "SG",
+          "label": {
+            "en": "Singapore",
+            "fr": "Singapour"
+          }
+        },
+        {
+          "value": "SK",
+          "label": {
+            "en": "Slovakia",
+            "fr": "Slovaquie"
+          }
+        },
+        {
+          "value": "SI",
+          "label": {
+            "en": "Slovenia",
+            "fr": "Slovénie"
+          }
+        },
+        {
+          "value": "ES",
+          "label": {
+            "en": "Spain",
+            "fr": "Espagne"
+          }
+        },
+        {
+          "value": "LK",
+          "label": {
+            "en": "Sri Lanka",
+            "fr": "Sri Lanka"
+          }
+        },
+        {
+          "value": "KN",
+          "label": {
+            "en": "St.Kitts and Nevis",
+            "fr": "Saint-Christophe-et-Niévès"
+          }
+        },
+        {
+          "value": "LC",
+          "label": {
+            "en": "St.Lucia",
+            "fr": "Sainte-Lucie"
+          }
+        },
+        {
+          "value": "VC",
+          "label": {
+            "en": "St.Vincent and the Grenadines",
+            "fr": "Saint-Vincent-et-les Grenadines"
+          }
+        },
+        {
+          "value": "SR",
+          "label": {
+            "en": "Suriname",
+            "fr": "Suriname"
+          }
+        },
+        {
+          "value": "SE",
+          "label": {
+            "en": "Sweden",
+            "fr": "Suède"
+          }
+        },
+        {
+          "value": "CH",
+          "label": {
+            "en": "Switzerland",
+            "fr": "Suisse"
+          }
+        },
+        {
+          "value": "SY",
+          "label": {
+            "en": "Syria",
+            "fr": "Syrie"
+          }
+        },
+        {
+          "value": "TJ",
+          "label": {
+            "en": "Tajikistan",
+            "fr": "Tadjikistan"
+          }
+        },
+        {
+          "value": "TH",
+          "label": {
+            "en": "Thailand",
+            "fr": "Thaïlande"
+          }
+        },
+        {
+          "value": "TG",
+          "label": {
+            "en": "Togo",
+            "fr": "Togo"
+          }
+        },
+        {
+          "value": "TT",
+          "label": {
+            "en": "Trinidad and Tobago",
+            "fr": "Trinité-et-Tobago"
+          }
+        },
+        {
+          "value": "TR",
+          "label": {
+            "en": "Turkey",
+            "fr": "Turquie"
+          }
+        },
+        {
+          "value": "TM",
+          "label": {
+            "en": "Turkmenistan",
+            "fr": "Turkménistan"
+          }
+        },
+        {
+          "value": "TC",
+          "label": {
+            "en": "Turks & Caicos",
+            "fr": "Îles Turques-et-Caïques"
+          }
+        },
+        {
+          "value": "UA",
+          "label": {
+            "en": "Ukraine",
+            "fr": "Ukraine"
+          }
+        },
+        {
+          "value": "AE",
+          "label": {
+            "en": "United Arab Emirates",
+            "fr": "Émirats arabes unis"
+          }
+        },
+        {
+          "value": "GB",
+          "label": {
+            "en": "United Kingdom",
+            "fr": "Royaume-Uni"
+          }
+        },
+        {
+          "value": "US",
+          "label": {
+            "en": "United States",
+            "fr": "États-Unis"
+          }
+        },
+        {
+          "value": "UY",
+          "label": {
+            "en": "Uruguay",
+            "fr": "Uruguay"
+          }
+        },
+        {
+          "value": "UZ",
+          "label": {
+            "en": "Uzbekistan",
+            "fr": "Ouzbékistan"
+          }
+        },
+        {
+          "value": "VE",
+          "label": {
+            "en": "Venezuela",
+            "fr": "Venezuela"
+          }
+        },
+        {
+          "value": "VN",
+          "label": {
+            "en": "Vietnam",
+            "fr": "Viêt Nam"
+          }
+        },
+        {
+          "value": "VG",
+          "label": {
+            "en": "Virgin Islands",
+            "fr": "Îles Vierges britanniques"
+          }
+        },
+        {
+          "value": "YE",
+          "label": {
+            "en": "Yemen",
+            "fr": "Yémen"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
+      "key": "poll_interval",
       "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "label": {
+        "en": "Reading interval (seconds)",
+        "fr": "Intervalle de lecture (secondes)"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
-    },
-    {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
       "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "How often each light is read on the network (30 to 3600 s); the changes it pushes are shown at once between two reads.",
+        "fr": "Fréquence de lecture de chaque lumière sur le réseau (30 à 3600 s) ; les changements qu’elle envoie s’affichent aussitôt entre deux lectures."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
+      "default": 60,
+      "min": 30,
       "max": 3600
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms des fonctionnalités"
+      },
+      "description": {
+        "en": "Used for the feature names of the lights added from now on.",
+        "fr": "Sert aux noms des fonctionnalités des lumières ajoutées désormais."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français"
+          }
+        },
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
-    }
-  ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion"
       },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
-      "variables": [
-        {
-          "key": "target",
-          "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
-        }
-      ]
-    }
-  ],
-  "scene_actions": [
-    {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
       "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+        "en": "Signs in to the AiDot cloud with the credentials saved (even after a refusal) and reads the list of the lights.",
+        "fr": "Se connecte au cloud AiDot avec les identifiants enregistrés (même après un refus) et lit la liste des lumières."
       },
-      "timeout_seconds": 15,
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ],
-      "outputs": [
-        {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
-        }
-      ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "timeout_seconds": 60
     }
   ]
 }

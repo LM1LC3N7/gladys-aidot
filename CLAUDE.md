@@ -1,76 +1,68 @@
 # CLAUDE.md
 
 Project rules for coding assistants (Claude Code reads this file) and for human
-contributors.
+contributors. Read **[TODO.md](./TODO.md) first**: status, decisions already
+taken and the next milestones.
 
 ## What this is
 
-A Gladys Assistant **external integration**: a Node.js service (Node 22+, ESM,
-no build step) that runs in its own sandboxed Docker container and talks to
-Gladys through
+A Gladys Assistant **external integration** for the AiDot Wi-Fi lights
+(Linkind, OREiN…): a Node.js service (Node 22+, ESM, no build step) in its own
+sandboxed Docker container, talking to Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
-its only runtime dependency. It started from the official JavaScript template.
+its only runtime dependency. The AiDot cloud gives the list of the lights with
+their address and keys; each light is then driven on the local network (TCP
+10000, AES). Ported from python-aidot 0.3.59 (MIT, the maker's library, see
+`THIRD_PARTY_NOTICES.md`).
 
 ## Commands
 
 ```bash
 npm install
-npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+npm test                                  # node --test --test-timeout=60000
+node --test test/off.test.js              # one file
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
-npm run format                            # Prettier, fix in place
-npx github:GladysAssistant/integration-store .   # store admission checks
+node scripts/cover.mjs cover.png          # the store cover (800x534)
+memcap node scripts/mutants.mjs           # the guard mutants of test/mutants.mjs, one by one
 ```
-
-The CI (`.github/workflows/ci.yml`) runs `format:check`, `lint` and `test` on
-Node 22 and 24, and builds the Docker image: run the three commands before
-pushing.
 
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
-.github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
+index.js              SDK wiring only (src/handlers.js registers the handlers before connect())
+src/app.js            the account and the lights: cloud reads, connections, states, commands, Offs held, status
+src/cloud.js          the AiDot cloud: sign-in, refresh, houses, devices, products; its errors
+src/http.js           the only HTTPS access (bounded)
+src/link.js           the TCP connection to one light: login, one request in flight, priorities, cut, heartbeat
+src/protocol.js       frames, AES, messages, attributes, discovery (pure)
+src/model.js          a device of the cloud -> a light (address, keys, capabilities) (pure)
+src/devices.js        a light -> its Gladys device (pure)
+src/store.js          /data: salt, terminal id, refusal mark, pause, last cloud read, Offs held
+src/config.js         the configuration (credentials, country, interval, language)
+src/countries.js      the countries and cloud regions of python-aidot
+src/publisher.js      states to Gladys within 300 per minute
+src/i18n.js           texts in English and French
+test/                 node --test: fake cloud and lights on a virtual clock, a real TCP light on a real clock (x20)
 ```
 
 ## Rules
 
-- **External ids are forever.** Build them with
-  `gladys.externalIds(type, platformId)`, `platformId` being the unique id the
-  platform gives the device (serial, cloud id, MAC), never a label. Gladys keys
-  devices, their history, scenes and dashboards on them: changing one creates a
-  new device and orphans the old one. The same goes for every key users store:
-  manifest `config_schema`, `actions`, widget and scene keys, feature keys.
-- **The container rootfs is read-only.** Write only under `/data`, the one
-  writable volume. Never log tokens, passwords or API keys.
-- **Versions belong to the Release workflow** (Actions → Release). Never edit
-  `version` in `package.json` or in the manifest, nor the `docker_image` tag,
-  by hand — except on the README's hand-pushed tag path, which bumps all three
-  together before tagging. `test/manifest.test.js` checks they agree.
-- **Changelog.** Every user-visible change adds a line under `## [Unreleased]`
-  in `CHANGELOG.md` (`### Added`, `Changed`, `Fixed`, `Removed`, `Security`).
-  Never write a version heading: the Release workflow moves the section, and it
-  becomes the notes of the GitHub Release.
-- **Manifest.** Texts are multi-language objects `{ "en": ..., "fr": ... }`:
-  `label`, `description` and `placeholder` alike, never a plain string. The
-  catalog `description` holds 10 to 100 characters per language. A field the
-  older cores do not know needs a higher `gladys_version` minimum
-  (`categories`: 4.86.0; `widgets`, `scene_triggers`, `scene_actions`,
-  `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
-  code (defaults, action, scene and widget handlers): change both sides
-  together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
-- **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
-  in English. Tests never touch the network.
+- **External ids are forever**: `ext:<selector>:light:<cloud device id>`;
+  feature keys `power`, `brightness`, `color`, `temperature`.
+- **The application id of python-aidot** is used for this integration only
+  (Louis, 2026-11-05). Never add another imitation (User-Agent, signature).
+- **Secrets**: the password, the tokens, the user id, the keys and passwords of
+  the lights never go to a log, the status, an error or `/data`; tokens and keys
+  stay in memory. `/data` holds a 6-bit mark of a refused password only.
+- **The password is posted only when allowed**: never after a refusal kept for
+  the same credentials, but on new credentials saved or the test button.
+- **An Off is never held back** (see the header of `src/app.js`): any change on
+  its path keeps a test that kills its mutant, listed in `test/mutants.mjs`
+  (`node scripts/mutants.mjs` must end with ALL KILLED); no test may hang.
+- **Order**: a read that left before a command or a push of the light never
+  applies its state after them (`tick` / `mark`).
+- **Two clocks**: `monotonic` for every decision, `now` for /data and messages.
+- **The container rootfs is read-only**: write only under `/data`.
+- **Versions belong to the Release workflow**; `CHANGELOG.md` under
+  `## [Unreleased]`; user-facing text in English and French, docs in sync.

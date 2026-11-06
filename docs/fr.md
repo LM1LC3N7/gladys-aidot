@@ -1,67 +1,133 @@
-# Template de démonstration
+# AiDot
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Intègre à Gladys les **lumières Wi-Fi AiDot** (Linkind, OREiN et les autres
+marques installées avec l’application AiDot) : marche / arrêt, intensité,
+couleur et température de couleur, et les changements envoyés par les lumières
+(application, interrupteur, programmations) affichés aussitôt.
 
-## Ce que vous obtenez
+> Jamais testé avec un vrai appareil : dites-nous sur le forum comment ça se
+> passe. Sans lien avec AiDot.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+## Fonctionnement
+
+- **Le cloud AiDot, pour la liste seulement.** Avec l’e-mail et le mot de passe
+  de votre compte AiDot, l’intégration lit la liste de vos lumières : leur nom,
+  leur modèle, leur adresse sur votre réseau et les clés locales dont chaque
+  lumière a besoin. Elle se connecte comme le fait python-aidot, la
+  bibliothèque du fabricant lui-même (celle qu’utilise Home Assistant) : avec
+  l’**identifiant d’application de cette bibliothèque**. Louis, qui maintient
+  ces intégrations, l’a accepté pour cette intégration seulement, le
+  2026-11-05. Rien d’autre n’imite une application.
+- **Votre réseau, pour tout le reste.** Chaque lumière ajoutée dans Gladys est
+  pilotée directement sur votre réseau (port TCP 10000, AES avec la clé de la
+  lumière) : aucune commande ne passe par le cloud. L’adresse vient du cloud ;
+  quand elle manque ou n’est plus bonne, une demande de découverte est
+  diffusée par Gladys lui-même (UDP 6666, comme le fait l’application AiDot)
+  pour la retrouver.
+- Le mot de passe, les jetons de la session, votre identifiant d’utilisateur et
+  les clés des lumières ne sont jamais écrits dans un journal, le statut ou le
+  dossier `/data` de l’intégration ; les jetons et les clés restent en mémoire.
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+1. **E-mail** et **mot de passe** du compte AiDot (ceux de l’application). Le
+   mot de passe est gardé par Gladys dans sa base, jamais réaffiché, et envoyé
+   seulement au cloud AiDot quand l’intégration se connecte.
+2. **Pays du compte** : celui choisi à la création du compte ; il désigne le
+   cloud AiDot (Europe, Amérique ou Asie).
+3. **Intervalle de lecture** : la fréquence de lecture de chaque lumière sur le
+   réseau (60 s par défaut, 30 s au moins). Les changements envoyés par la
+   lumière arrivent aussitôt entre deux lectures.
+4. Enregistrez, puis ouvrez **Découverte** : chaque lumière qui a une clé
+   locale y figure avec son nom dans l’application AiDot. Ajoutez celles que
+   vous voulez : seules les lumières ajoutées sont connectées.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+**Tester la connexion** se connecte au cloud AiDot avec les identifiants
+enregistrés (même après un refus, toutes les 10 s au plus, jamais pendant une
+demande d’attente d’AiDot) et lit la liste des lumières.
 
-## Actions
+## Le cloud, poliment
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+- La liste est lue au démarrage, toutes les 6 heures et à la **Découverte**,
+  jamais moins d’une minute après la lecture précédente (redémarrage compris :
+  l’heure de chaque essai est gardée dans `/data`). De nouveaux identifiants
+  enregistrés et **Tester la connexion** (toutes les 10 s au plus) n’attendent
+  pas cette minute.
+- **E-mail ou mot de passe refusé** : seule la connexion au compte peut le
+  dire. Le refus est gardé (dans `/data` : une empreinte du compte et une marque
+  à 64 valeurs du mot de passe, jamais le mot de passe) et **le mot de passe
+  n’est jamais renvoyé de lui-même**, redémarrage compris, tant que vous
+  n’enregistrez pas d’autres identifiants ou ne cliquez pas sur **Tester la
+  connexion**. Aucune autre erreur du cloud (une session non acceptée, une
+  réponse illisible) n’est prise pour un refus : la session est renouvelée, et
+  la lecture réessayée plus tard.
+- **AiDot demande d’attendre** (HTTP 429 ou 5xx) : le cloud est laissé
+  tranquille 60 s, doublées jusqu’à 6 h (ou ce que demande AiDot, dans ces
+  bornes), gardé au redémarrage. Injoignable : nouveaux essais après 1, 2, 5,
+  15, 30 min, puis toutes les heures.
+- Rien de tout cela n’arrête les lumières déjà connues : elles sont pilotées
+  sur le réseau.
 
-## Scènes
+## Appareils
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+| Lumière AiDot                        | Fonctionnalités                                    |
+| ------------------------------------ | -------------------------------------------------- |
+| Toutes                               | Allumage (0 / 1), intensité (0 à 100, 0 = éteint)  |
+| Couleur (`control.light.rgbw`)       | + couleur, température de couleur (2700-6500 K)    |
+| Blanc réglable (`control.light.cct`) | + température de couleur, dans la plage du produit |
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+Une couleur, une température ou une intensité allume aussi la lumière. Une
+température hors de la plage de la lumière, ou une couleur sur une lumière
+blanche, est refusée avant tout envoi.
 
-## Tableau de bord
+## Envoi des commandes
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+- Une connexion par lumière, un message à la fois dessus. Une commande est
+  réussie quand la lumière montre le nouvel état après elle (répondue par la
+  lumière, ou changée par rapport à avant) ; sinon son message dit pourquoi
+  (« envoyée, sans confirmation », « montre un autre état », « refusée par la
+  lumière ») et la lumière est relue 5 s plus tard.
+- Une scène sur plusieurs lumières les règle toutes : une commande qui attend
+  encore sa connexion après 3,5 s le dit et part quand même sous 30 s ; les
+  commandes d’une même lumière en attente sont fusionnées.
+
+## Éteindre (arrêt)
+
+Un arrêt (allumage 0, ou intensité 0) ne demande aucune option et passe en
+premier : il annule les commandes de cette lumière encore en attente (aucune ne
+part après lui), coupe une requête restée sans réponse 1 s, et part quoi que
+dise le cloud (un refus, une pause, injoignable) et même si la configuration ne
+peut pas être lue, tant que la lumière est connue.
+
+Quand il ne peut pas partir, il est **gardé** (aussi au redémarrage) et renvoyé
+toutes les 10 s, aussitôt qu’une connexion à la lumière s’ouvre, et dès que le
+cloud donne la lumière (après un redémarrage, sa clé vient d’abord du cloud).
+Envoyé, il est vérifié par une lecture juste après : éteinte, c’est fait ;
+encore allumée alors que la lumière l’a répondu, il est renvoyé 10 s plus tard.
+Il prend fin quand la lumière se montre éteinte, quand elle est rallumée dans
+l’application ou à l’interrupteur après la réponse à l’arrêt (jamais défait),
+quand une commande plus récente de cette lumière part, ou quand l’appareil est
+supprimé dans Gladys.
+
+Un arrêt n’est refusé que s’il est remplacé par un clic plus récent sur la même
+lumière avant de partir. Une fois répondu 4 fois par la lumière sans qu’elle se
+montre éteinte, il n’est plus renvoyé de lui-même : le statut le dit ;
+recliquez sur Arrêt.
+
+## Statut
+
+La page Configuration montre l’état du cloud (connecté, refusé, demande
+d’attente, injoignable), le nombre de lumières, celles joignables sur le
+réseau, les lumières à ajouter, et chaque arrêt gardé.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- « injoignable » : la lumière est coupée au secteur, ou sur un autre réseau que
+  Gladys ; nouveaux essais après 5 ou 15 s, puis 30 s, 1, 2, puis toutes les
+  5 minutes, et une découverte toutes les 5 minutes au plus.
+- « une autre lumière ou une autre clé » : la clé a changé (lumière remise à
+  zéro ou réappairée) : la liste est relue depuis le cloud (une minute d’écart
+  au moins).
+- Rien dans Découverte : seules les lumières qui ont une clé locale y figurent
+  (lumières Wi-Fi de l’application AiDot, dans une maison dont vous êtes
+  propriétaire).
