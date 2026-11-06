@@ -1,6 +1,6 @@
 {
   "name": "gladys-aidot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gladys Assistant integration for the AiDot Wi-Fi lights (Linkind, OREiN...): the AiDot cloud for the list and the keys, then the lights driven on the local network.",
   "type": "module",

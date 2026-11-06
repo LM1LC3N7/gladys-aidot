@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-06
+
 ### Added
 
 - AiDot Wi-Fi lights (Linkind, OREiN…), ported from python-aidot 0.3.59 (MIT,
@@ -26,3 +28,6 @@ the notes of the version's GitHub Release.
   it (60 s to 6 h, kept across a restart).
 - Discovery of the addresses through the Gladys core (UDP broadcast 6666).
 - "Test the connection"; texts in English and French.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-aidot/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-aidot/releases/tag/v0.1.1
